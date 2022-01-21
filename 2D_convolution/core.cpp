@@ -37,6 +37,7 @@ void doConv(hls::stream<uint8_sidechannel> &instream, hls::stream<int8_sidechann
 
 
 		//put data on the line-buffer
+		// [https://github.com/awslabs/aws-fpga-app-notes/blob/master/reInvent18_Developer_Workshop/filter2D/src/kernel/hls_video_mem.h] 참고
 		lineBuff.shift_up(idxCol);
 		lineBuff.insert_top(pixelin,idxCol);
 
