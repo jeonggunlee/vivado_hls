@@ -31,22 +31,27 @@ void doConv(hls::stream<uint8_sidechannel> &instream, hls::stream<int8_sidechann
 #pragma HLS INTERFACE s_axilite port=kernel bundle=KERNEL_BUS
 
 
-	//defining line buffer
+	//defining line buffer:LineBuffer<3, 320, unsigned char> lineBuff;
 	hls::LineBuffer<KERNEL_DIM,IMG_WIDTH_OR_COLS,unsigned char> lineBuff;
-	hls::Window<KERNEL_DIM,KERNEL_DIM,short> window;
+	
+	// Window LineBuffer와 Kernel의 Product를 저장!
+	hls::Window<KERNEL_DIM, KERNEL_DIM, short> window;
 	//hls::Window<KERNEL_DIM,KERNEL_DIM,short> left_window;
 
 	//index used to keep track of row,col
 	int idxCol = 0;
 	int idxRow = 0;
 	int pixConvolved = 0;
+	
 	// calculate delay to fix line-buffer offset
-	int waitTicks = (IMG_WIDTH_OR_COLS*(KERNEL_DIM-1)+KERNEL_DIM)/2;
+	// 320*(3-1) + 3 -> 처음 Convolution을 시행할 수 있는 데이터.
+	int waitTicks = (IMG_WIDTH_OR_COLS*(KERNEL_DIM-1)+KERNEL_DIM)/2;  
 	int countWait = 0;
 	int sentPixels = 0;
 
 	int8_sidechannel dataoutsidechannel;
 	uint8_sidechannel currpixelsidechannel;
+	
 	//iterate on all pixels
 	for (int idxpixel = 0;idxpixel< (IMG_WIDTH_OR_COLS*IMG_HEIGHT_OR_ROWS);idxpixel++)
 	{
@@ -58,11 +63,13 @@ void doConv(hls::stream<uint8_sidechannel> &instream, hls::stream<int8_sidechann
 		unsigned char pixelin = currpixelsidechannel.data;
 
 
-		//put data on the line-buffer
+		// put data on the line-buffer
 		// [https://github.com/awslabs/aws-fpga-app-notes/blob/master/reInvent18_Developer_Workshop/filter2D/src/kernel/hls_video_mem.h] 참고
 		lineBuff.shift_up(idxCol);
 		lineBuff.insert_top(pixelin,idxCol);
 
+		// Convolution 시행
+		// Boundary Check
 		if ((idxRow>=KERNEL_DIM-1) && (idxCol >= KERNEL_DIM-1) && idxCol<IMG_WIDTH_OR_COLS-2 && idxRow<IMG_HEIGHT_OR_ROWS-2)
 		{
 			//put data on the window and multiply it with the kernel
@@ -106,7 +113,7 @@ void doConv(hls::stream<uint8_sidechannel> &instream, hls::stream<int8_sidechann
 			pixConvolved = 0;
 		}
 		countWait++;
-		if (countWait>waitTicks)
+		if (countWait>waitTicks)  // 이때 부터 Convolution 연산의 결과가 만들어짐.
 		{
 			//put data on output stream
 			dataoutsidechannel.data = valOutput;
